@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+
+.div {
+width:100px;
+height:60px;
+background-color:green;
+border-radius:8px;
+display:inline-block;
+}
+
+canvas {
+    border:1px solid #d3d3d3;
+    width:100%;
+    height:70%;
+    
+}
+#myProgress {
+  width: 100%;
+  background-color: grey;
+  height:30px;
+}
+/*
+#myBar {
+  width: 10%;
+  height: 30px;
+  background-color: #4CAF50;
+  text-align: center; // To center it horizontally (if you want) 
+  line-height: 30px; // To center it vertically 
+  color: white; 
+}*/
+#hintLeft {
+
+width:50%;
+text-align:center;
+font-size:50px;
+position:absolute;
+top:0;
+left:0;
+opacity:0.5;
+background-color:white;
+height:70%;
+
+}
+
+#hintRight {
+
+width:50%;
+text-align:center;
+font-size:50px;
+position:absolute;
+top:0;
+right:0;
+opacity:0.5;
+background-color:white;
+height:70%;
+
+}
+
+</style>
+</head>
+<body onload="startGame()">
+<canvas id="canvas" ></canvas>
+<div id="myBar">
+  <div id="myb"></div>
+</div>
+<div id="hintLeft" style="opacity:0.5;" ><br><br><br>Left</div>
+<div id="hintRight" style="opacity:0.5;" ><br><br><br>Right</div>
+
+<p id="inf" ></p>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.0/socket.io.slim.js"></script>
+<script>
+
+var myGamePiece;
+var myObstacle=[];
+var background=[];
+crashing=true;
+sclX=20;
+sclY=30;
+syncRandP=1000,syncRandR=null,obsSyncRand=null;
+startPos=window.innerHeight*0.55;
+ 
+over=false;
+
+function move() {
+  var elem = document.getElementById("myBar");
+  var width = 0;
+  var id = setInterval(frame, 10);
+  function frame() {
+    if (width >= 100) {
+      clearInterval(id);
+    } else {
+    setTimeout(function(){
+      width-=1; 
+      elem.style.display = 'none'; 
+      elem.innerHTML = width * 1 + '%';
+      document.getElementById("hintLeft").style.left=parseFloat((width))+'%';
+      document.getElementById("hintRight").style.right=parseFloat((width))+'%';
+      },2000);
+    }
+  }
+}
+move();
+
+socket = io.connect('http://11.100.52.132:5001/');
+
+socket.on('chat',function(data){
+console.log(data);
+});
+
+socket.on('users',function(data){
+
+console.log(data);
+
+if(data>2){setTimeout(function(){
+    
+    myGamePiece = new component(sclX, sclY, "car3.png", 250, startPos,1,1,"image");
+    otherPlayer = new component(sclX, sclY, "3d.png", 250, startPos,1,1,"image");
+    
+    myGameArea.start();
+    //obs();
+myGameArea.frameNo=0;
+    //document.getElementById("#myb").style.display="none";
+    
+    },10);}
+});
+
+socket.on('onl',function(data){
+socket.emit('yesOnline',data);
+console.log('s');
+});
+socket.on('sendPos',function(data){
+//document.getElementById("inf").textContent=obsSyncRand;
+console.log(data);
+syncData=data.split(' ');
+syncRandP=syncData[1];
+syncRandR=syncData[2];
+obsSyncRand=parseInt(syncData[3]);
+socket.emit('rcvPos',syncData[0]+' '+myGamePiece.x+' '+myGamePiece.y);
+});
+socket.on('pos',function(data){
+console.log(data+' '+socket.id);
+
+dat=JSON.parse(data);
+for(var name in dat)
+if(name != socket.id)
+otherPlayer.x=dat[name].split(' ')[0];
+otherPlayer.y=dat[name].split(' ')[1];
+});
+function startGame() {
+
+myGamePiece = new component(sclX, sclY, "car3.png", 250, startPos,1,1,"image");
+   otherPlayer = new component(sclX, sclY, "3d.png", 250, startPos,1,1,"image");
+   
+   myGameArea.start();
+   //obs();
+   document.getElementById("#myb").style.display="none";
+   
+//socket = io.connect('http://localhost:5001');
+}
+
+var myGameArea = {
+    canvas : document.getElementById("canvas"),
+    start : function() {
+    	background=[];
+    	myObstacle=[];
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight*0.70;
+        this.context = this.canvas.getContext("2d");
+        document.body.insertBefore(this.canvas, document.body.childNodes[0]);
+        this.frameNo = 0;
+        
+        this.interval = setInterval(updateGameArea,10);
+        
+        },
+        
+        clear : function() {
+        this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        },
+        stop : function() {
+        clearInterval(this.interval);
+        },
+    over : function() {
+    over=true;
+    this.context.font = "50px Comic Sans MS";
+    this.context.textAlign = "center";
+    myGameArea.context.strokeStyle="black";
+    this.context.fillText("Game Over", this.canvas.width/2, this.canvas.height/2);
+    this.context.strokeText("Game Over", this.canvas.width/2, this.canvas.height/2);
+    this.context.font = "30px Comic Sans MS";
+    
+    this.context.fillText("Your Score: "+sc, this.canvas.width/2, this.canvas.height/2+60);
+    this.context.strokeText("Your Score: "+sc, this.canvas.width/2, this.canvas.height/2+60);
+    }
+    
+    
+}
+
+
+myGameArea.canvas.addEventListener("touchstart", function (e) {
+				//mousePos = getTouchPos(canvas, e);
+				
+				if(over&&btnRight==false&&btnLeft==false){
+				setTimeout(function(){myGamePiece.y=startPos;},2000);over=false;}
+				
+				for(i=0;i<e.changedTouches.length;i++){
+				var touch = e.changedTouches[i];
+			tX=(touch.pageX);
+			if(tX>this.width/2)btnRight=true;
+			if(tX<this.width/2)btnLeft=true;
+			}
+			
+			
+			
+			});
+myGameArea.canvas.addEventListener("touchend", function (e) {
+							for(i=0;i<e.changedTouches.length;i++){
+var touch = e.changedTouches[i];
+			tX=(touch.pageX);
+			if(tX>this.width/2)btnRight=false;
+			if(tX<this.width/2)btnLeft=false;
+			}
+			});
+
+
+function component(width, height, color, x, y,sx,sy,type) {
+    this.type = type;
+    if (type == "image") {
+    this.image = new Image();
+    this.image.src = color;
+    }
+    this.width = width;
+    this.height = height;
+    this.angle = 0;
+    this.speed = 1;
+    this.moveAngle = 1;
+    this.sa = sx;
+    this.sb = sy;
+    this.x = x;
+    this.y = y;    
+    this.update = function() {
+    if (type == "image") {
+    
+    ctx = myGameArea.context;
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.rotate(this.angle);
+    ctx.scale(this.sa,this.sb);
+    ctx.translate(-this.x-this.width/2, -this.y-this.height/2);         
+    ctx.drawImage(this.image, this.x+5, this.y, this.width, this.height);
+    ctx.restore();
+    
+    
+    
+    } else {
+        ctx = myGameArea.context;
+        ctx.save();
+        ctx.translate(this.x, this.y);        
+        ctx.rotate(this.angle);
+        ctx.fillStyle = color;
+        ctx.fillRect(this.width / -2, this.height / -2, this.width, this.height);
+        ctx.restore();    
+   }
+    }
+    this.crashWith = function(otherobj) {
+    var myleft = this.x;
+    var myright = this.x + (this.width*this.sa);
+    var mytop = this.y;
+    var mybottom = this.y + (this.height*this.sb);
+    var otherleft = otherobj.x + otherobj.width/3;
+    var otherright = otherobj.x + (otherobj.width*otherobj.sa);
+    var othertop = otherobj.y;
+    var otherbottom = otherobj.y + (otherobj.height*otherobj.sb);
+    var crash = true;
+    if ((mybottom < othertop) ||
+    (mytop > otherbottom) ||
+    (myright < otherleft) ||
+    (myleft > otherright)) {
+    crash = false;
+    }
+    return crash;
+    }
+}
+btnRight=false;
+btnLeft=false;
+sc=0;
+bgrotate=0;
+//r=5;
+r=syncRandR;
+//p=rand(1000,1200);
+p=syncRandP;
+w=p;
+function updateGameArea() {
+
+myGameArea.clear();
+sc++;
+score="Score: "+ sc;
+if (sc>w) {
+w=w+rand(100,200);
+
+//r=rand(-10,10);
+if(syncRandR)r=syncRandR;
+}
+
+myGameArea.context.font = "30px Comic Sans MS";
+myGameArea.context.fillStyle="black";
+myGameArea.context.fillText(score, this.canvas.width/2, 50);
+
+
+
+if (myGameArea.frameNo ==(1) || everyinterval(50000000)) {
+   background.push(new component(myGameArea.canvas.width, myGameArea.canvas.height, "background.png", myGameArea.canvas.width/2, 0,1,1.1,"image"));
+   }
+   if (background[background.length-2].y>myGameArea.canvas.height){
+   background.push(new component(myGameArea.canvas.width, myGameArea.canvas.height, "background.png", myGameArea.canvas.width/2,0,1,1.1,"image"));
+   background.push(new component(myGameArea.canvas.width, myGameArea.canvas.height, "background.png", myGameArea.canvas.width/2,-myGameArea.canvas.height,1,1.1,"image"));
+   background.shift();
+   
+   }
+   
+   for (i = 0; i < background.length; i += 1) {
+   background[i].y += 8;
+   
+   
+   background[i].update();
+   
+if(syncRandR){
+   if (r<=2) {bgrotate=0.007;}
+   if (r>=8) {bgrotate=-0.007;} 
+   if (r>=6) {bgrotate=-0.003;} 
+   if (r<=4) {bgrotate=0.003;} 
+   if (r>=4&&r<=6) {bgrotate=0;} 
+   }
+   
+   if (sc>p) {
+   
+   
+   
+   myGameArea.context.translate(myGameArea.canvas.width/2, myGameArea.canvas.height/2);
+   
+   myGameArea.context.rotate((0.1+bgrotate)*Math.PI/180);
+   myGamePiece.angle+=(-(0.1+bgrotate/3)*Math.PI/180);
+   myGamePiece.angle+=(0.1*Math.PI/180);
+   
+   myGameArea.context.rotate(-0.1*Math.PI/180);
+   
+   
+   
+   myGameArea.context.translate(-myGameArea.canvas.width/2, -myGameArea.canvas.height/2);
+   
+   }
+   }
+   otherPlayer.update();
+   myGamePiece.update();
+if(btnRight)myGamePiece.angle += 0.25 * Math.PI / 180;
+   if(btnLeft)myGamePiece.angle -= 0.25 * Math.PI / 180;
+
+  
+    myGamePiece.x += 7 * Math.sin(myGamePiece.angle);
+    myGameArea.frameNo += 1;
+    if (myGameArea.frameNo !=(1||100||200) && everyinterval(300)) {
+    myObstacle.push(new component(sclX, sclY, "car5.png", obsSyncRand||rand(0,500), -200,1,1,"image"));
+    }
+    
+    for (i = 0; i < myObstacle.length; i += 1) {
+    myObstacle[i].y += 0.5;
+    
+    myObstacle[i].update();
+    }
+    if (myGameArea.frameNo !=(1||80) && everyinterval(200)) {
+    myObstacle.push(new component(sclX, sclY, "car5.png", obsSyncRand||rand(0,500), -200,1,1,"image"));
+    }
+    for (i = 0; i < myObstacle.length; i += 1) {
+    myObstacle[i].y += 0.5;
+    
+    myObstacle[i].update();
+    
+    }
+    
+    
+   if (myGamePiece.x < 0+myGamePiece.width/2)myGamePiece.x=0+myGamePiece.width/2;
+   if ((myGamePiece.x+myGamePiece.width/2) > myGameArea.canvas.width)myGamePiece.x=myGameArea.canvas.width-myGamePiece.width/2;
+   /*{
+    myGameArea.stop();
+    myGameArea.over();
+    }*/
+    
+    
+   for (i = 0; i < myObstacle.length; i += 1) {
+   if (myGamePiece.crashWith(myObstacle[i])) {
+   myGamePiece.y+=0.5;
+   //setTimeout(function(){myGameArea.stop();myGameArea.over();},3000);
+   stop=true;
+   //}
+   }
+   }
+    for (i = 0; i < myObstacle.length; i += 1) {
+    if (myGamePiece.crashWith(myObstacle[i])) {
+    crashing=true;
+    }
+    }
+    if(!crashing){
+    if(myGamePiece.y>startPos){myGamePiece.y-=5;
+    }else{crashing=true;}
+    }
+    
+    
+}
+;
+
+function everyinterval(n) {
+  if ((myGameArea.frameNo / n) % 1 == 0) {return true;}
+  return false;
+}
+
+
+camrotate=0;
+function left() {
+myvar = window.setInterval(function(){
+myGamePiece.angle -= 0.15 * Math.PI / 180;
+},1);
+
+
+}
+function right() {
+
+myv = window.setInterval(function(){
+myGamePiece.angle += 0.15 * Math.PI / 180;
+},1);
+
+
+}
+function foreward() {
+myvr = window.setInterval(function(){
+    myGamePiece.y -= myGamePiece.speed * Math.cos(myGamePiece.angle);
+    myGamePiece.x += myGamePiece.speed * Math.sin(myGamePiece.angle);
+    stp=false;
+    },1);
+    
+}
+function backward() {
+myvars = window.setInterval(function(){
+    
+    myGamePiece.y += myGamePiece.speed * Math.cos(myGamePiece.angle);
+    myGamePiece.x -= myGamePiece.speed * Math.sin(myGamePiece.angle);
+    },1);
+}
+function stops() {
+
+window.clearInterval(myvar);
+window.clearInterval(myv);
+window.clearInterval(myvr);
+window.clearInterval(myvars);
+}
+
+document.body.onkeydown = function(e){
+    var x = e.keyCode;
+    var lastKey = 0;
+    if (lastKey == x) {return;}
+    else {
+     if (x == 38) {foreward();}
+    if (x == 40) {backward();}
+    if (x == 37) {left();}
+    if (x == 39) {right();}
+    lastKey=x;
+    }
+};
+document.body.onkeyup = function(){stop();}
+function rand(min, max) {
+  return Math.floor(Math.random() * (max - min + 1) ) + min;
+}
+
+</script>
+<center>
+<div class="div" ontouchstart="foreward()" ontouchend="stops()"></div></br>
+<div class="div" ontouchstart="left()" ontouchend="stops()"></div>
+<div class="div" ontouchstart="right()" ontouchend="stops()"></div></br>
+<div class="div" ontouchstart="backward()" ontouchend="stops()"></div>
+</center>
+<!--
+
+
+myGameArea.context.drawImage(bg,0,bgspeed, myGameArea.canvas.width,myGameArea.canvas.height);
+if(bgspeed>0){myGameArea.context.drawImage(bg,0,-myGameArea.canvas.height+bgspeed,myGameArea.canvas.width,myGameArea.canvas.height);
+myGameArea.context.drawImage(bg,0,-myGameArea.canvas.height*2+bgspeed,myGameArea.canvas.width,myGameArea.canvas.height);}
+}else{
+bgx=0;
+myGameArea.context.drawImage(bg,0,bgspeed, myGameArea.canvas.width,myGameArea.canvas.height);
+if(bgspeed>0){myGameArea.context.drawImage(bg,0,-myGameArea.canvas.height+bgspeed,myGameArea.canvas.width,myGameArea.canvas.height);
+myGameArea.context.drawImage(bg,0,-myGameArea.canvas.height*2+bgspeed,myGameArea.canvas.width,myGameArea.canvas.height);}
+}
+if(bgspeed>myGameArea.canvas.height){bgspeed=0;}
+
+myGamePiece.x += myGamePiece.speed * Math.sin(myGamePiece.angle);-->
+    
+
+</body>
+</html>
